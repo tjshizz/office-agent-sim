@@ -1,0 +1,19 @@
+{
+  "name": "office-sim",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @office-sim/desktop dev",
+    "dev:web": "pnpm --filter @office-sim/web dev",
+    "start:web": "pnpm --filter @office-sim/web start",
+    "build": "pnpm --filter @office-sim/shared build && pnpm --filter @office-sim/sim build && pnpm --filter @office-sim/agents build && pnpm --filter @office-sim/desktop build",
+    "build:web": "pnpm --filter @office-sim/shared build && pnpm --filter @office-sim/sim build && pnpm --filter @office-sim/agents build && pnpm --filter @office-sim/web build",
+    "typecheck": "pnpm -r typecheck",
+    "smoke": "pnpm --filter @office-sim/shared build && pnpm --filter @office-sim/sim build && node scripts/smoke-sim.mjs"
+  },
+
+  "engines": {
+    "node": ">=20"
+  }
+}

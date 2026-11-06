@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/out
+**/.vite
+**/.DS_Store
+**/*.log
+**/.env
+**/.env.*
+**/userData
+**/*.sqlite
+**/release
+**/.git
+**/agent-transcripts
+apps/desktop/out
+apps/desktop/node_modules
+**/*.tsbuildinfo
+**/.cursor

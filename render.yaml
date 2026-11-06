@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: office-agent-sim
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: "8080"

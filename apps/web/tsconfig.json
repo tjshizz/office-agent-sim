@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@office-sim/shared": ["../../packages/shared/src/index.ts"],
+      "@office-sim/sim": ["../../packages/sim/src/index.ts"],
+      "@office-sim/agents": ["../../packages/agents/src/index.ts"],
+      "@office-sim/game": ["../../packages/game/src/index.ts"],
+      "@office-sim/ui": ["../../packages/ui/src/index.ts"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../../packages/shared/src/**/*",
+    "../../packages/sim/src/**/*",
+    "../../packages/agents/src/**/*",
+    "../../packages/game/src/**/*",
+    "../../packages/ui/src/**/*"
+  ]
+}

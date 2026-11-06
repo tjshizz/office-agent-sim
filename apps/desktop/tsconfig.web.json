@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": [],
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@office-sim/shared": ["../../packages/shared/src/index.ts"],
+      "@office-sim/game": ["../../packages/game/src/index.ts"],
+      "@office-sim/ui": ["../../packages/ui/src/index.ts"]
+    }
+  },
+  "include": [
+    "renderer/**/*",
+    "../../packages/game/src/**/*",
+    "../../packages/ui/src/**/*",
+    "../../packages/shared/src/**/*"
+  ]
+}
