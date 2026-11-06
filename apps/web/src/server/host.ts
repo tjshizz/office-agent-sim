@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { MindQueue } from "@office-sim/agents";
 import {
   OfficeCommandSchema,
+  migrateAgentId,
   type AwayEvent,
   type HostPayload,
   type ServerMeta,
@@ -24,18 +25,19 @@ const AWAY_SCRIPTS: Record<string, string[]> = {
     "Updated the release checklist.",
     "Closed a stale bug as duplicate.",
   ],
-  leo: [
+  tobias: [
     "Drafted tomorrow's standup agenda.",
     "Synced the roadmap board with engineering.",
     "Wrote acceptance criteria for the next story.",
     "Parked a low-priority request for Friday.",
   ],
-  sam: [
+  lynn: [
     "Tightened spacing on the settings screen.",
     "Exported icon variants for dark mode.",
     "Left design notes on the splash screen.",
     "Organized the Figma handoff folder.",
   ],
+
   riley: [
     "Filed vendor invoices for the week.",
     "Renewed the staging domain certificate.",
@@ -265,8 +267,22 @@ export class OfficeHost {
         world?: Parameters<World["loadState"]>[0];
         awayLog?: AwayEvent[];
       };
-      if (raw.world) this.world.loadState(raw.world);
-      if (raw.awayLog) this.awayLog = raw.awayLog;
+      if (raw.world) {
+        this.world.loadState(raw.world);
+        // Persist Leo/Sam → Tobias/Lynn rewrite so old ids never come back.
+        this.dirty = true;
+      }
+      if (raw.awayLog) {
+        this.awayLog = raw.awayLog.map((e) => {
+          const agentId = migrateAgentId(e.agentId);
+          const agent = this.world.agents.find((a) => a.soul.id === agentId);
+          return {
+            ...e,
+            agentId,
+            agentName: agent?.soul.name ?? e.agentName,
+          };
+        });
+      }
     } catch (err) {
       console.warn("[office-host] failed to load save", err);
     }

@@ -1,4 +1,4 @@
-import type { HostPayload, WorldSnapshot } from "@office-sim/shared";
+import { overlayCanonicalSouls, type HostPayload, type WorldSnapshot } from "@office-sim/shared";
 import type { OfficeApi } from "./bridge";
 
 function joinUrl(base: string, path: string): string {
@@ -16,8 +16,9 @@ export function createRemoteOfficeBridge(serverUrl: string): OfficeApi {
   let esStream: EventSource | null = null;
 
   const emitSnap = (snap: WorldSnapshot) => {
-    lastSnapshot = snap;
-    for (const cb of snapshotListeners) cb(snap);
+    const next = overlayCanonicalSouls(snap);
+    lastSnapshot = next;
+    for (const cb of snapshotListeners) cb(next);
   };
 
   const connect = () => {

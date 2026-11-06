@@ -63,4 +63,4 @@ Without that env var, desktop runs a local office (stops when you quit).
 
 ## Cast
 
-Maya (Eng), Leo (Product), Sam (Design), Riley (Ops)
+Maya (Eng), Tobias (Product), Lynn (Design), Riley (Ops)

@@ -1,7 +1,28 @@
-import type { AgentState, Location, Relationship, Soul } from "./models.js";
+import type {
+  AgentState,
+  Conversation,
+  Intention,
+  Location,
+  MemoryFact,
+  Relationship,
+  Soul,
+  WorldSnapshot,
+} from "./models.js";
 
 export const MAP_WIDTH = 24;
 export const MAP_HEIGHT = 16;
+
+/** Retired cast ids → current cast (Leo/Sam renamed). */
+export const AGENT_ID_MIGRATIONS: Record<string, string> = {
+  leo: "tobias",
+  sam: "lynn",
+  desk_leo: "desk_tobias",
+  desk_sam: "desk_lynn",
+};
+
+export function migrateAgentId(id: string): string {
+  return AGENT_ID_MIGRATIONS[id] ?? id;
+}
 
 /** 0 = walkable, 1 = blocked */
 export const OFFICE_COLLISION: number[][] = [
@@ -25,8 +46,9 @@ export const OFFICE_COLLISION: number[][] = [
 
 export const LOCATIONS: Location[] = [
   { id: "desk_maya", name: "Maya's desk", tile: { x: 4, y: 5 }, kind: "desk", ownerAgentId: "maya" },
-  { id: "desk_leo", name: "Leo's desk", tile: { x: 9, y: 5 }, kind: "desk", ownerAgentId: "leo" },
-  { id: "desk_sam", name: "Sam's desk", tile: { x: 14, y: 5 }, kind: "desk", ownerAgentId: "sam" },
+  { id: "desk_tobias", name: "Tobias's desk", tile: { x: 9, y: 5 }, kind: "desk", ownerAgentId: "tobias" },
+  { id: "desk_lynn", name: "Lynn's desk", tile: { x: 14, y: 5 }, kind: "desk", ownerAgentId: "lynn" },
+
   { id: "desk_riley", name: "Riley's desk", tile: { x: 19, y: 5 }, kind: "desk", ownerAgentId: "riley" },
   { id: "coffee", name: "Coffee machine", tile: { x: 2, y: 12 }, kind: "coffee" },
   { id: "meeting_table", name: "Meeting table", tile: { x: 11, y: 10 }, kind: "meeting" },
@@ -53,8 +75,8 @@ export const SOULS: Soul[] = [
     temperature: 0.55,
   },
   {
-    id: "leo",
-    name: "Leo",
+    id: "tobias",
+    name: "Tobias",
     role: "Product",
     voice: "curious, warm, slightly too many questions",
     traits: ["curious", "optimistic", "meeting-happy"],
@@ -67,10 +89,11 @@ export const SOULS: Soul[] = [
     ],
     color: "#4c8fe8",
     temperature: 0.75,
+    spriteKey: "tobias",
   },
   {
-    id: "sam",
-    name: "Sam",
+    id: "lynn",
+    name: "Lynn",
     role: "Designer",
     voice: "observant, soft, visual metaphors",
     traits: ["observant", "coffee-motivated", "tasteful"],
@@ -83,7 +106,10 @@ export const SOULS: Soul[] = [
     ],
     color: "#7bc47f",
     temperature: 0.7,
+    spriteKey: "lynn",
   },
+
+
   {
     id: "riley",
     name: "Riley",
@@ -119,8 +145,9 @@ function agentFromSoul(soul: Soul, tile: { x: number; y: number }, deskId: strin
 export function createSeedAgents(): AgentState[] {
   return [
     agentFromSoul(SOULS[0]!, { x: 4, y: 5 }, "desk_maya"),
-    agentFromSoul(SOULS[1]!, { x: 9, y: 5 }, "desk_leo"),
-    agentFromSoul(SOULS[2]!, { x: 14, y: 5 }, "desk_sam"),
+    agentFromSoul(SOULS[1]!, { x: 9, y: 5 }, "desk_tobias"),
+    agentFromSoul(SOULS[2]!, { x: 14, y: 5 }, "desk_lynn"),
+
     agentFromSoul(SOULS[3]!, { x: 19, y: 5 }, "desk_riley"),
   ];
 }
@@ -142,4 +169,130 @@ export function locationById(id: string): Location | undefined {
 
 export function deskForAgent(agentId: string): Location | undefined {
   return LOCATIONS.find((l) => l.ownerAgentId === agentId);
+}
+
+function migrateIntention(intention: Intention): Intention {
+  return {
+    ...intention,
+    locationId: intention.locationId
+      ? migrateAgentId(intention.locationId)
+      : intention.locationId,
+    targetAgentId: intention.targetAgentId
+      ? migrateAgentId(intention.targetAgentId)
+      : intention.targetAgentId,
+  };
+}
+
+function soulById(id: string): Soul | undefined {
+  return SOULS.find((s) => s.id === id);
+}
+
+/**
+ * Rewrite retired Leo/Sam ids to Tobias/Lynn and refresh souls from seed
+ * (sprite keys, names, desks). Drops unknown agents; fills any missing cast.
+ */
+export function migrateWorldCast(data: {
+  simMs: number;
+  agents: AgentState[];
+  conversations: Conversation[];
+  memories: MemoryFact[];
+  relationships: Relationship[];
+  tokens: WorldSnapshot["tokens"];
+}): {
+  simMs: number;
+  agents: AgentState[];
+  conversations: Conversation[];
+  memories: MemoryFact[];
+  relationships: Relationship[];
+  tokens: WorldSnapshot["tokens"];
+} {
+  const seen = new Set<string>();
+  const agents: AgentState[] = [];
+
+  for (const agent of data.agents) {
+    const id = migrateAgentId(agent.soul.id);
+    if (seen.has(id)) continue;
+    const soul = soulById(id);
+    if (!soul) continue;
+    seen.add(id);
+    agents.push({
+      ...agent,
+      soul,
+      pos: agent.pos ?? { x: agent.tile.x, y: agent.tile.y },
+      intention: migrateIntention(agent.intention),
+    });
+  }
+
+  for (const seeded of createSeedAgents()) {
+    if (seen.has(seeded.soul.id)) continue;
+    agents.push(seeded);
+  }
+
+  const conversations = data.conversations.map((c) => ({
+    ...c,
+    participantIds: c.participantIds.map(migrateAgentId),
+    locationId: c.locationId ? migrateAgentId(c.locationId) : c.locationId,
+    lines: c.lines.map((l) => ({
+      ...l,
+      speakerId: migrateAgentId(l.speakerId),
+    })),
+  }));
+
+  const memories = data.memories.map((m) => ({
+    ...m,
+    agentId: migrateAgentId(m.agentId),
+    about: migrateAgentId(m.about),
+  }));
+
+  const relMap = new Map<string, Relationship>();
+  for (const r of data.relationships) {
+    const a = migrateAgentId(r.a);
+    const b = migrateAgentId(r.b);
+    if (a === b) continue;
+    const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+    const existing = relMap.get(key);
+    if (existing) {
+      existing.warmth = Math.max(existing.warmth, r.warmth);
+    } else {
+      relMap.set(key, { a: a < b ? a : b, b: a < b ? b : a, warmth: r.warmth });
+    }
+  }
+  for (const seeded of createSeedRelationships()) {
+    const key = `${seeded.a}|${seeded.b}`;
+    if (!relMap.has(key)) relMap.set(key, seeded);
+  }
+
+  return {
+    simMs: data.simMs,
+    agents,
+    conversations,
+    memories,
+    relationships: [...relMap.values()],
+    tokens: data.tokens,
+  };
+}
+
+/**
+ * Client overlay: keep server agent ids (so join still works against an
+ * unmigrated host) but show current names/sprites for retired cast.
+ */
+export function overlayCanonicalSouls(snapshot: WorldSnapshot): WorldSnapshot {
+  return {
+    ...snapshot,
+    agents: snapshot.agents.map((agent) => {
+      const canonId = migrateAgentId(agent.soul.id);
+      const soul = soulById(canonId);
+      if (!soul) return agent;
+      return {
+        ...agent,
+        soul: { ...soul, id: agent.soul.id },
+      };
+    }),
+    bubble: snapshot.bubble
+      ? {
+          ...snapshot.bubble,
+          // keep agentId as server id; label comes from agent soul
+        }
+      : snapshot.bubble,
+  };
 }

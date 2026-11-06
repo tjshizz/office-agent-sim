@@ -5,6 +5,7 @@ import {
   USER_ID,
   createSeedAgents,
   createSeedRelationships,
+  migrateWorldCast,
   type AgentState,
   type Conversation,
   type ConversationLine,
@@ -595,15 +596,13 @@ export class World {
     relationships: Relationship[];
     tokens: TokenUsage;
   }): void {
-    this.simMs = data.simMs;
-    this.agents = data.agents.map((a) => ({
-      ...a,
-      pos: a.pos ?? { x: a.tile.x, y: a.tile.y },
-    }));
-    this.conversations = data.conversations;
-    this.memories = data.memories;
-    this.relationships = data.relationships;
-    this.tokens = data.tokens;
+    const migrated = migrateWorldCast(data);
+    this.simMs = migrated.simMs;
+    this.agents = migrated.agents;
+    this.conversations = migrated.conversations;
+    this.memories = migrated.memories;
+    this.relationships = migrated.relationships;
+    this.tokens = migrated.tokens;
     this.activeConversationId = null;
     this.bubble = null;
     this.markDirty();

@@ -21,34 +21,36 @@ export function AppShell({ bridge, gameHostId }: Props) {
 
   return (
     <div className="app-shell">
-      <div id={gameHostId} className="game-host" />
-      {snapshot ? (
-        <Hud
-          snapshot={snapshot}
-          serverMeta={serverMeta}
-          onPauseToggle={() =>
-            bridge.sendCommand({ type: snapshot.paused ? "resume" : "pause" })
-          }
-          onOpenKey={() => setShowKeyModal(true)}
-          onDismissToast={() => bridge.sendCommand({ type: "dismissToast" })}
+      <div className="stage">
+        <div id={gameHostId} className="game-host" />
+        {snapshot ? (
+          <Hud
+            snapshot={snapshot}
+            serverMeta={serverMeta}
+            onPauseToggle={() =>
+              bridge.sendCommand({ type: snapshot.paused ? "resume" : "pause" })
+            }
+            onOpenKey={() => setShowKeyModal(true)}
+            onDismissToast={() => bridge.sendCommand({ type: "dismissToast" })}
+          />
+        ) : null}
+        {snapshot?.activeConversationId ? (
+          <ChatPanel
+            snapshot={snapshot}
+            stream={stream}
+            onSend={(text) => bridge.sendCommand({ type: "send", text })}
+            onClose={() => bridge.sendCommand({ type: "closeChat" })}
+          />
+        ) : null}
+        <ApiKeyModal
+          open={showKeyModal}
+          hasKey={snapshot?.hasApiKey ?? false}
+          onSave={(key) => bridge.sendCommand({ type: "setApiKey", key })}
+          onClear={() => bridge.sendCommand({ type: "clearApiKey" })}
+          onClose={() => setShowKeyModal(false)}
         />
-      ) : null}
-      {snapshot?.activeConversationId ? (
-        <ChatPanel
-          snapshot={snapshot}
-          stream={stream}
-          onSend={(text) => bridge.sendCommand({ type: "send", text })}
-          onClose={() => bridge.sendCommand({ type: "closeChat" })}
-        />
-      ) : null}
-      <ApiKeyModal
-        open={showKeyModal}
-        hasKey={snapshot?.hasApiKey ?? false}
-        onSave={(key) => bridge.sendCommand({ type: "setApiKey", key })}
-        onClear={() => bridge.sendCommand({ type: "clearApiKey" })}
-        onClose={() => setShowKeyModal(false)}
-      />
-
+      </div>
+      <p className="rotate-hint">Turn your phone sideways for the full office view.</p>
     </div>
   );
 }

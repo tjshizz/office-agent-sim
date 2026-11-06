@@ -45,17 +45,24 @@ function scheduleSave(): void {
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1280,
-    height: 800,
+    height: 720,
     minWidth: 960,
-    minHeight: 640,
+    minHeight: 540,
     title: "Office Agent Sim",
-    backgroundColor: "#12161f",
+    backgroundColor: "#070b12",
+    show: false,
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
     },
+  });
+
+  mainWindow.setAspectRatio(16 / 9);
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.maximize();
+    mainWindow?.show();
   });
 
   if (process.env.ELECTRON_RENDERER_URL) {

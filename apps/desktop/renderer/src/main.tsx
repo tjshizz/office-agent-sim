@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { HostPayload, WorldSnapshot } from "@office-sim/shared";
+import { overlayCanonicalSouls, type HostPayload, type WorldSnapshot } from "@office-sim/shared";
 import { createGame } from "@office-sim/game";
 import { AppShell, useOfficeStore } from "@office-sim/ui";
 import "../../../../packages/ui/src/styles.css";
@@ -29,8 +29,8 @@ function createRemoteClient(baseUrl: string): OfficeClient {
   esSnap.addEventListener("snapshot", (evt) => {
     try {
       const payload = JSON.parse((evt as MessageEvent).data) as HostPayload;
-      last = payload.snapshot;
-      for (const cb of snapshotListeners) cb(payload.snapshot);
+      last = overlayCanonicalSouls(payload.snapshot);
+      for (const cb of snapshotListeners) cb(last);
       for (const cb of metaListeners) cb(payload.server);
     } catch {
       // ignore
@@ -52,9 +52,9 @@ function createRemoteClient(baseUrl: string): OfficeClient {
       if (last) return last;
       const res = await fetch(`${base}/api/snapshot`);
       const payload = (await res.json()) as HostPayload;
-      last = payload.snapshot;
+      last = overlayCanonicalSouls(payload.snapshot);
       for (const cb of metaListeners) cb(payload.server);
-      return payload.snapshot;
+      return last;
     },
     sendCommand: (cmd) => {
       void fetch(`${base}/api/command`, {
@@ -107,8 +107,9 @@ function Root({ office }: { office: OfficeClient }) {
     gameRef.current = created;
 
     const offSnap = office.onSnapshot((snap) => {
-      setSnapshot(snap);
-      created.scene.applySnapshot(snap);
+      const next = overlayCanonicalSouls(snap);
+      setSnapshot(next);
+      created.scene.applySnapshot(next);
     });
 
     const offStream = office.onStream((payload) => {
@@ -140,8 +141,9 @@ function Root({ office }: { office: OfficeClient }) {
     const offMeta = office.onServerMeta?.((meta) => setServerMeta(meta));
 
     void office.getSnapshot().then((snap) => {
-      setSnapshot(snap);
-      setTimeout(() => created.scene.applySnapshot(snap), 100);
+      const next = overlayCanonicalSouls(snap);
+      setSnapshot(next);
+      setTimeout(() => created.scene.applySnapshot(next), 100);
     });
 
     return () => {
@@ -171,8 +173,11 @@ function Boot() {
     let cancelled = false;
     void (async () => {
       if (SERVER_URL) {
+        const base = SERVER_URL.replace(/\/$/, "");
         try {
-          const res = await fetch(`${SERVER_URL.replace(/\/$/, "")}/api/health`);
+          const res = await fetch(`${base}/api/health`, {
+            signal: AbortSignal.timeout(60_000),
+          });
           if (!res.ok) throw new Error(`Server health ${res.status}`);
           if (cancelled) return;
           setOffice(createRemoteClient(SERVER_URL));
@@ -182,7 +187,7 @@ function Boot() {
           setError(
             `Could not reach OFFICE_SERVER_URL (${SERVER_URL}): ${
               err instanceof Error ? err.message : String(err)
-            }`,
+            }. If Render was asleep, wait a few seconds and retry.`,
           );
           return;
         }

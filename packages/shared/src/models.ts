@@ -42,8 +42,11 @@ export const SoulSchema = z.object({
   barkLines: z.array(z.string()),
   color: z.string(),
   temperature: z.number().min(0).max(1).default(0.7),
+  /** Folder under /sprites/{spriteKey}/ with north/south/east/west pngs */
+  spriteKey: z.string().optional(),
 });
 export type Soul = z.infer<typeof SoulSchema>;
+
 
 export const PosSchema = z.object({
   x: z.number(),

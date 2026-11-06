@@ -34,9 +34,9 @@ async function main() {
   console.log("joined", joined?.id, joined?.mode);
   world.appendUserLine("What are you working on?");
   world.rememberFact("maya", "user", "Likes short answers");
-  world.assignTask("leo", "get_coffee", "coffee");
+  world.assignTask("tobias", "get_coffee", "coffee");
   console.log("memories", world.memories.length);
-  console.log("leo intention", world.agents.find((a) => a.soul.id === "leo")?.intention);
+  console.log("tobias intention", world.agents.find((a) => a.soul.id === "tobias")?.intention);
 
   if (snap.agents.length !== 4) throw new Error("expected 4 agents");
   if (!snap.ambientBudgetClosed) throw new Error("expected bark mode without key");
