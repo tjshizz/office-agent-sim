@@ -102,11 +102,14 @@ export class OfficeHost {
     );
 
     this.load();
+    this.purgeRetiredCast();
     this.world.setHasApiKey(Boolean(this.apiKey));
   }
 
   start(): void {
     if (this.tickTimer) return;
+    this.purgeRetiredCast();
+    this.saveIfDirty(true);
     this.tickTimer = setInterval(() => this.world.tick(), 100);
     this.awayTimer = setInterval(() => this.runAwayShift(), AWAY_INTERVAL_MS);
     this.saveTimer = setInterval(() => this.saveIfDirty(), SAVE_INTERVAL_MS);
@@ -114,8 +117,37 @@ export class OfficeHost {
     setTimeout(() => this.runAwayShift(), 8_000);
     this.publish();
     console.log(
-      `[office-host] running · key=${this.apiKey ? "yes" : "no"} · data=${this.dataPath}`,
+      `[office-host] running · key=${this.apiKey ? "yes" : "no"} · cast=${this.world.agents
+        .map((a) => a.soul.id)
+        .join(",")} · data=${this.dataPath}`,
     );
+  }
+
+  /** Drop Leo/Sam from the live world + save file; keep Maya/Tobias/Lynn/Riley. */
+  private purgeRetiredCast(): void {
+    const before = this.world.agents.map((a) => a.soul.id).join(",");
+    this.world.loadState({
+      simMs: this.world.simMs,
+      agents: this.world.agents,
+      conversations: this.world.conversations,
+      memories: this.world.memories,
+      relationships: this.world.relationships,
+      tokens: this.world.tokens,
+    });
+    this.awayLog = this.awayLog.map((e) => {
+      const agentId = migrateAgentId(e.agentId);
+      const agent = this.world.agents.find((a) => a.soul.id === agentId);
+      return {
+        ...e,
+        agentId,
+        agentName: agent?.soul.name ?? migrateAgentId(e.agentName),
+      };
+    });
+    const after = this.world.agents.map((a) => a.soul.id).join(",");
+    if (before !== after) {
+      console.log(`[office-host] cast migrated ${before} → ${after}`);
+    }
+    this.dirty = true;
   }
 
   stop(): void {

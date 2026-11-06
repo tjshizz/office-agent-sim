@@ -287,11 +287,5 @@ export function overlayCanonicalSouls(snapshot: WorldSnapshot): WorldSnapshot {
         intention: migrateIntention(agent.intention),
       };
     }),
-    bubble: snapshot.bubble
-      ? {
-          ...snapshot.bubble,
-          // keep agentId as server id for lookup; text already free-form
-        }
-      : snapshot.bubble,
   };
 }
