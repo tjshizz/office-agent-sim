@@ -1,9 +1,11 @@
 import Phaser from "phaser";
 import {
+  LOCATIONS,
   MAP_HEIGHT,
   MAP_WIDTH,
   OFFICE_COLLISION,
-  LOCATIONS,
+  SOULS,
+  migrateAgentId,
   type WorldSnapshot,
 } from "@office-sim/shared";
 
@@ -21,6 +23,30 @@ const DIRS = [
   "south-west",
 ] as const;
 const SPRITE_KEYS = ["lynn", "tobias"] as const;
+
+function displaySoul(agent: WorldSnapshot["agents"][number]): {
+  id: string;
+  name: string;
+  color: string;
+  spriteKey?: string;
+} {
+  const canonId = migrateAgentId(agent.soul.id);
+  const seeded = SOULS.find((s) => s.id === canonId);
+  if (seeded) {
+    return {
+      id: agent.soul.id,
+      name: seeded.name,
+      color: seeded.color,
+      spriteKey: seeded.spriteKey,
+    };
+  }
+  return {
+    id: agent.soul.id,
+    name: agent.soul.name,
+    color: agent.soul.color,
+    spriteKey: agent.soul.spriteKey,
+  };
+}
 
 export type GameCallbacks = {
   onAgentClick: (agentId: string) => void;
@@ -245,6 +271,20 @@ export class OfficeScene extends Phaser.Scene {
           ? agent.soul.id
           : undefined);
       let container = this.agentSprites.get(agent.soul.id);
+      const wantAvatar = Boolean(
+        spriteKey && this.textures.exists(texKey(spriteKey, "south")),
+      );
+      if (container) {
+        const hasAvatar = Boolean(container.getData("avatar"));
+        const label = container.getData("nameLabel") as Phaser.GameObjects.Text | undefined;
+        if (label && label.text !== agent.soul.name) label.setText(agent.soul.name);
+        if (hasAvatar !== wantAvatar) {
+          container.destroy();
+          this.agentSprites.delete(agent.soul.id);
+          this.moveTargets.delete(agent.soul.id);
+          container = undefined;
+        }
+      }
       if (!container) {
         container = this.createAgentSprite(
           agent.soul.id,
@@ -387,8 +427,8 @@ export class OfficeScene extends Phaser.Scene {
 
     if (spriteKey && this.textures.exists(texKey(spriteKey, "south"))) {
       avatar = this.add.image(0, 0, texKey(spriteKey, "south"));
-      avatar.setDisplaySize(28, 28);
-      avatar.setOrigin(0.5, 0.65);
+      avatar.setDisplaySize(40, 40);
+      avatar.setOrigin(0.5, 0.7);
       children.push(avatar);
     } else {
       const colorNum = Phaser.Display.Color.HexStringToColor(color).color;
@@ -404,6 +444,7 @@ export class OfficeScene extends Phaser.Scene {
     container.setSize(28, 36);
     container.setDepth(10);
     container.setData("statusText", statusText);
+    container.setData("nameLabel", label);
     if (avatar) container.setData("avatar", avatar);
     if (body) container.setData("body", body);
     if (head) container.setData("head", head);
