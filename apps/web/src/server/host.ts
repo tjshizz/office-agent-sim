@@ -17,6 +17,8 @@ type StreamListener = (payload: unknown) => void;
 
 const AWAY_INTERVAL_MS = 90_000;
 const SAVE_INTERVAL_MS = 5_000;
+/** Bump to force cast migration on deploy. */
+export const CAST_VERSION = "tobias-lynn-v1";
 
 const AWAY_SCRIPTS: Record<string, string[]> = {
   maya: [
@@ -117,7 +119,7 @@ export class OfficeHost {
     setTimeout(() => this.runAwayShift(), 8_000);
     this.publish();
     console.log(
-      `[office-host] running · key=${this.apiKey ? "yes" : "no"} · cast=${this.world.agents
+      `[office-host] running · castVersion=${CAST_VERSION} · key=${this.apiKey ? "yes" : "no"} · cast=${this.world.agents
         .map((a) => a.soul.id)
         .join(",")} · data=${this.dataPath}`,
     );

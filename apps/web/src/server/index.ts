@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { OfficeHost } from "./host.js";
+import { CAST_VERSION, OfficeHost } from "./host.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -125,6 +125,8 @@ const server = createServer((req, res) => {
         simMs: payload.snapshot.simMs,
         clients: payload.server.clients,
         hasServerKey: payload.server.hasServerKey,
+        castVersion: CAST_VERSION,
+        cast: payload.snapshot.agents.map((a) => a.soul.id),
       }),
     );
     return;
