@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { overlayCanonicalSouls, type HostPayload, type WorldSnapshot } from "@office-sim/shared";
+import {
+  migrateAgentIdReverse,
+  overlayCanonicalSouls,
+  type HostPayload,
+  type WorldSnapshot,
+} from "@office-sim/shared";
 import { createGame } from "@office-sim/game";
 import { AppShell, useOfficeStore } from "@office-sim/ui";
 import "../../../../packages/ui/src/styles.css";
@@ -57,10 +62,15 @@ function createRemoteClient(baseUrl: string): OfficeClient {
       return last;
     },
     sendCommand: (cmd) => {
+      const raw = cmd as { type?: string; agentId?: string };
+      const body =
+        raw.type === "join" && raw.agentId
+          ? { ...raw, agentId: migrateAgentIdReverse(raw.agentId) }
+          : cmd;
       void fetch(`${base}/api/command`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(cmd),
+        body: JSON.stringify(body),
       });
     },
     onSnapshot: (cb) => {

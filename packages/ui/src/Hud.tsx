@@ -1,4 +1,4 @@
-import type { ServerMeta, WorldSnapshot } from "@office-sim/shared";
+import { migrateAgentId, SOULS, type ServerMeta, type WorldSnapshot } from "@office-sim/shared";
 
 type Props = {
   snapshot: WorldSnapshot;
@@ -27,6 +27,10 @@ export function Hud({
     Math.round((snapshot.tokens.chatUsed / snapshot.tokens.chatCap) * 100),
   );
   const latestAway = serverMeta?.awayLog?.at(-1);
+  const awayName = latestAway
+    ? (SOULS.find((s) => s.id === migrateAgentId(latestAway.agentId))?.name ??
+      latestAway.agentName)
+    : null;
 
   return (
     <div className="hud">
@@ -63,9 +67,9 @@ export function Hud({
           {snapshot.toast}
         </div>
       ) : null}
-      {latestAway ? (
+      {latestAway && awayName ? (
         <div className="away-note">
-          While you were away: <strong>{latestAway.agentName}</strong> — {latestAway.text}
+          While you were away: <strong>{awayName}</strong> — {latestAway.text}
         </div>
       ) : null}
       <div className="hint">Click an employee whenever you want to talk to them</div>

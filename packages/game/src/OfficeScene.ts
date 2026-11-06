@@ -174,8 +174,9 @@ export class OfficeScene extends Phaser.Scene {
     ctx.drawImage(src, 0, 0);
     const imageData = ctx.getImageData(0, 0, w, h);
     const d = imageData.data;
+    // Only punch out near-pure black backgrounds — keep dark clothing.
     for (let i = 0; i < d.length; i += 4) {
-      if (d[i]! < 18 && d[i + 1]! < 18 && d[i + 2]! < 18) {
+      if (d[i]! <= 4 && d[i + 1]! <= 4 && d[i + 2]! <= 4) {
         d[i + 3] = 0;
       }
     }

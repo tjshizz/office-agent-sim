@@ -271,8 +271,9 @@ export function migrateWorldCast(data: {
 }
 
 /**
- * Client-side overlay: keep server agent ids (so join still works pre-redeploy),
- * but always show the current cast names/sprites (Tobias/Lynn, not Leo/Sam).
+ * Client-side overlay: rewrite retired Leo/Sam ids to Tobias/Lynn and refresh
+ * souls (names + sprite keys). Join commands should use migrateAgentIdReverse
+ * when talking to an unmigrated server.
  */
 export function overlayCanonicalSouls(snapshot: WorldSnapshot): WorldSnapshot {
   return {
@@ -283,9 +284,31 @@ export function overlayCanonicalSouls(snapshot: WorldSnapshot): WorldSnapshot {
       if (!soul) return agent;
       return {
         ...agent,
-        soul: { ...soul, id: agent.soul.id },
+        soul: { ...soul },
         intention: migrateIntention(agent.intention),
       };
     }),
+    bubble: snapshot.bubble
+      ? {
+          ...snapshot.bubble,
+          agentId: migrateAgentId(snapshot.bubble.agentId),
+        }
+      : snapshot.bubble,
   };
+}
+
+/** Map current cast ids back to retired server ids (pre-redeploy Render). */
+export function migrateAgentIdReverse(id: string): string {
+  switch (id) {
+    case "tobias":
+      return "leo";
+    case "lynn":
+      return "sam";
+    case "desk_tobias":
+      return "desk_leo";
+    case "desk_lynn":
+      return "desk_sam";
+    default:
+      return id;
+  }
 }
