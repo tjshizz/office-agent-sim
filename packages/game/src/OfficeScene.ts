@@ -265,10 +265,11 @@ export class OfficeScene extends Phaser.Scene {
 
     for (const agent of snap.agents) {
       seen.add(agent.soul.id);
+      const display = displaySoul(agent);
       const spriteKey =
-        agent.soul.spriteKey ??
-        ((SPRITE_KEYS as readonly string[]).includes(agent.soul.id)
-          ? agent.soul.id
+        display.spriteKey ??
+        ((SPRITE_KEYS as readonly string[]).includes(migrateAgentId(agent.soul.id))
+          ? migrateAgentId(agent.soul.id)
           : undefined);
       let container = this.agentSprites.get(agent.soul.id);
       const wantAvatar = Boolean(
@@ -277,7 +278,7 @@ export class OfficeScene extends Phaser.Scene {
       if (container) {
         const hasAvatar = Boolean(container.getData("avatar"));
         const label = container.getData("nameLabel") as Phaser.GameObjects.Text | undefined;
-        if (label && label.text !== agent.soul.name) label.setText(agent.soul.name);
+        if (label && label.text !== display.name) label.setText(display.name);
         if (hasAvatar !== wantAvatar) {
           container.destroy();
           this.agentSprites.delete(agent.soul.id);
@@ -288,8 +289,8 @@ export class OfficeScene extends Phaser.Scene {
       if (!container) {
         container = this.createAgentSprite(
           agent.soul.id,
-          agent.soul.color,
-          agent.soul.name,
+          display.color,
+          display.name,
           spriteKey,
         );
         this.agentSprites.set(agent.soul.id, container);

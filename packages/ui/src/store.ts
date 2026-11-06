@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ServerMeta, WorldSnapshot } from "@office-sim/shared";
+import { overlayCanonicalSouls, type ServerMeta, type WorldSnapshot } from "@office-sim/shared";
 
 export type StreamState = {
   conversationId: string;
@@ -27,7 +27,7 @@ export const useOfficeStore = create<OfficeUiState>((set) => ({
   stream: null,
   serverMeta: null,
   showKeyModal: false,
-  setSnapshot: (snapshot) => set({ snapshot }),
+  setSnapshot: (snapshot) => set({ snapshot: overlayCanonicalSouls(snapshot) }),
   setStream: (stream) => set({ stream }),
   setServerMeta: (serverMeta) => set({ serverMeta }),
   appendStreamToken: (token) =>
