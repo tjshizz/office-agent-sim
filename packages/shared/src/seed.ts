@@ -187,10 +187,7 @@ function soulById(id: string): Soul | undefined {
   return SOULS.find((s) => s.id === id);
 }
 
-/**
- * Rewrite retired Leo/Sam ids to Tobias/Lynn and refresh souls from seed
- * (sprite keys, names, desks). Drops unknown agents; fills any missing cast.
- */
+/** Rewrite persisted Leo/Sam cast to Tobias/Lynn and refresh soul definitions. */
 export function migrateWorldCast(data: {
   simMs: number;
   agents: AgentState[];
@@ -218,14 +215,15 @@ export function migrateWorldCast(data: {
     agents.push({
       ...agent,
       soul,
-      pos: agent.pos ?? { x: agent.tile.x, y: agent.tile.y },
       intention: migrateIntention(agent.intention),
+      pos: agent.pos ?? { x: agent.tile.x, y: agent.tile.y },
     });
   }
 
   for (const seeded of createSeedAgents()) {
     if (seen.has(seeded.soul.id)) continue;
     agents.push(seeded);
+    seen.add(seeded.soul.id);
   }
 
   const conversations = data.conversations.map((c) => ({
@@ -244,22 +242,22 @@ export function migrateWorldCast(data: {
     about: migrateAgentId(m.about),
   }));
 
-  const relMap = new Map<string, Relationship>();
+  const relSeen = new Set<string>();
+  const relationships: Relationship[] = [];
   for (const r of data.relationships) {
     const a = migrateAgentId(r.a);
     const b = migrateAgentId(r.b);
     if (a === b) continue;
     const key = a < b ? `${a}|${b}` : `${b}|${a}`;
-    const existing = relMap.get(key);
-    if (existing) {
-      existing.warmth = Math.max(existing.warmth, r.warmth);
-    } else {
-      relMap.set(key, { a: a < b ? a : b, b: a < b ? b : a, warmth: r.warmth });
-    }
+    if (relSeen.has(key)) continue;
+    relSeen.add(key);
+    relationships.push({ a, b, warmth: r.warmth });
   }
   for (const seeded of createSeedRelationships()) {
-    const key = `${seeded.a}|${seeded.b}`;
-    if (!relMap.has(key)) relMap.set(key, seeded);
+    const key = seeded.a < seeded.b ? `${seeded.a}|${seeded.b}` : `${seeded.b}|${seeded.a}`;
+    if (relSeen.has(key)) continue;
+    relSeen.add(key);
+    relationships.push(seeded);
   }
 
   return {
@@ -267,14 +265,14 @@ export function migrateWorldCast(data: {
     agents,
     conversations,
     memories,
-    relationships: [...relMap.values()],
+    relationships,
     tokens: data.tokens,
   };
 }
 
 /**
- * Client overlay: keep server agent ids (so join still works against an
- * unmigrated host) but show current names/sprites for retired cast.
+ * Client-side overlay: keep server agent ids (so join still works pre-redeploy),
+ * but always show the current cast names/sprites (Tobias/Lynn, not Leo/Sam).
  */
 export function overlayCanonicalSouls(snapshot: WorldSnapshot): WorldSnapshot {
   return {
@@ -286,12 +284,13 @@ export function overlayCanonicalSouls(snapshot: WorldSnapshot): WorldSnapshot {
       return {
         ...agent,
         soul: { ...soul, id: agent.soul.id },
+        intention: migrateIntention(agent.intention),
       };
     }),
     bubble: snapshot.bubble
       ? {
           ...snapshot.bubble,
-          // keep agentId as server id; label comes from agent soul
+          // keep agentId as server id for lookup; text already free-form
         }
       : snapshot.bubble,
   };
