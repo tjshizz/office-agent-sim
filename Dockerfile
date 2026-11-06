@@ -28,6 +28,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 ENV OFFICE_DATA_DIR=/data
+ENV OFFICE_DIST_DIR=/app/dist
 RUN mkdir -p /data
 COPY --from=build /app/apps/web/dist ./dist
 COPY --from=build /app/apps/web/server-bundle.mjs ./server-bundle.mjs

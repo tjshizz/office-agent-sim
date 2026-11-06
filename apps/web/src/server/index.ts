@@ -5,10 +5,25 @@ import { fileURLToPath } from "node:url";
 import { CAST_VERSION, OfficeHost } from "./host.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const ROOT = join(__dirname, "..");
-const DIST = existsSync(join(ROOT, "dist")) ? join(ROOT, "dist") : join(__dirname, "../../dist");
 const PORT = Number(process.env.PORT || 8080);
-const DATA_DIR = process.env.OFFICE_DATA_DIR || join(ROOT, ".office-data");
+const DATA_DIR = process.env.OFFICE_DATA_DIR || join(__dirname, ".office-data");
+
+function resolveDist(): string {
+  if (process.env.OFFICE_DIST_DIR) return process.env.OFFICE_DIST_DIR;
+  // Bundled next to dist/ in Docker (`/app/server-bundle.mjs` + `/app/dist`)
+  // or next to source during local runs (`apps/web/src/server` → `apps/web/dist`).
+  const candidates = [
+    join(__dirname, "dist"),
+    join(__dirname, "../dist"),
+    join(__dirname, "../../dist"),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(join(candidate, "index.html"))) return candidate;
+  }
+  return candidates[0]!;
+}
+
+const DIST = resolveDist();
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
