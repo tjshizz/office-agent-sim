@@ -271,8 +271,8 @@ export function migrateWorldCast(data: {
 }
 
 /**
- * Client-side overlay: keep server agent ids (so join still works pre-redeploy),
- * but always show the current cast names/sprites (Tobias/Lynn, not Leo/Sam).
+ * Client-side overlay: rewrite Leo/Sam → Tobias/Lynn (ids, names, sprites).
+ * Use {@link resolveServerAgentId} when sending join commands to an unmigrated host.
  */
 export function overlayCanonicalSouls(snapshot: WorldSnapshot): WorldSnapshot {
   return {
@@ -283,9 +283,37 @@ export function overlayCanonicalSouls(snapshot: WorldSnapshot): WorldSnapshot {
       if (!soul) return agent;
       return {
         ...agent,
-        soul: { ...soul, id: agent.soul.id },
+        soul: { ...soul },
         intention: migrateIntention(agent.intention),
       };
     }),
+    bubble: snapshot.bubble
+      ? {
+          ...snapshot.bubble,
+          agentId: migrateAgentId(snapshot.bubble.agentId),
+        }
+      : snapshot.bubble,
+    activeConversationId: snapshot.activeConversationId,
+    conversations: snapshot.conversations.map((c) => ({
+      ...c,
+      participantIds: c.participantIds.map(migrateAgentId),
+      locationId: c.locationId ? migrateAgentId(c.locationId) : c.locationId,
+      lines: c.lines.map((l) => ({
+        ...l,
+        speakerId: migrateAgentId(l.speakerId),
+      })),
+    })),
   };
+}
+
+/** Map a canonical cast id back to whatever id the live host still uses. */
+export function resolveServerAgentId(
+  canonicalId: string,
+  serverAgentIds: readonly string[],
+): string {
+  if (serverAgentIds.includes(canonicalId)) return canonicalId;
+  for (const [from, to] of Object.entries(AGENT_ID_MIGRATIONS)) {
+    if (to === canonicalId && serverAgentIds.includes(from)) return from;
+  }
+  return canonicalId;
 }

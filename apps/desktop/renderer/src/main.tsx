@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { overlayCanonicalSouls, type HostPayload, type WorldSnapshot } from "@office-sim/shared";
+import {
+  overlayCanonicalSouls,
+  resolveServerAgentId,
+  type HostPayload,
+  type WorldSnapshot,
+} from "@office-sim/shared";
 import { createGame } from "@office-sim/game";
 import { AppShell, useOfficeStore } from "@office-sim/ui";
 import "../../../../packages/ui/src/styles.css";
@@ -18,19 +23,38 @@ type OfficeClient = {
   onServerMeta?: (cb: (meta: HostPayload["server"]) => void) => () => void;
 };
 
+function remapCommand(cmd: unknown, serverAgentIds: readonly string[]): unknown {
+  if (!cmd || typeof cmd !== "object") return cmd;
+  const c = cmd as { type?: string; agentId?: string };
+  if (c.type === "join" && typeof c.agentId === "string") {
+    return {
+      ...c,
+      agentId: resolveServerAgentId(c.agentId, serverAgentIds),
+    };
+  }
+  return cmd;
+}
+
 function createRemoteClient(baseUrl: string): OfficeClient {
   const base = baseUrl.replace(/\/$/, "");
   const snapshotListeners = new Set<(snap: WorldSnapshot) => void>();
   const streamListeners = new Set<(payload: unknown) => void>();
   const metaListeners = new Set<(meta: HostPayload["server"]) => void>();
   let last: WorldSnapshot | null = null;
+  let serverAgentIds: string[] = [];
+
+  const ingest = (snap: WorldSnapshot): WorldSnapshot => {
+    serverAgentIds = snap.agents.map((a) => a.soul.id);
+    last = overlayCanonicalSouls(snap);
+    return last;
+  };
 
   const esSnap = new EventSource(`${base}/api/events`);
   esSnap.addEventListener("snapshot", (evt) => {
     try {
       const payload = JSON.parse((evt as MessageEvent).data) as HostPayload;
-      last = overlayCanonicalSouls(payload.snapshot);
-      for (const cb of snapshotListeners) cb(last);
+      const next = ingest(payload.snapshot);
+      for (const cb of snapshotListeners) cb(next);
       for (const cb of metaListeners) cb(payload.server);
     } catch {
       // ignore
@@ -52,15 +76,15 @@ function createRemoteClient(baseUrl: string): OfficeClient {
       if (last) return last;
       const res = await fetch(`${base}/api/snapshot`);
       const payload = (await res.json()) as HostPayload;
-      last = overlayCanonicalSouls(payload.snapshot);
+      const next = ingest(payload.snapshot);
       for (const cb of metaListeners) cb(payload.server);
-      return last;
+      return next;
     },
     sendCommand: (cmd) => {
       void fetch(`${base}/api/command`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(cmd),
+        body: JSON.stringify(remapCommand(cmd, serverAgentIds)),
       });
     },
     onSnapshot: (cb) => {
@@ -107,6 +131,7 @@ function Root({ office }: { office: OfficeClient }) {
     gameRef.current = created;
 
     const offSnap = office.onSnapshot((snap) => {
+      // Remote client already overlays; local client may still send raw snaps.
       const next = overlayCanonicalSouls(snap);
       setSnapshot(next);
       created.scene.applySnapshot(next);
