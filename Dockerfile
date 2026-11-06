@@ -27,7 +27,9 @@ FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
+ENV OFFICE_DATA_DIR=/data
+RUN mkdir -p /data
 COPY --from=build /app/apps/web/dist ./dist
-COPY --from=build /app/apps/web/server.mjs ./server.mjs
+COPY --from=build /app/apps/web/server-bundle.mjs ./server-bundle.mjs
 EXPOSE 8080
-CMD ["node", "server.mjs"]
+CMD ["node", "server-bundle.mjs"]

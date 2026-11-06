@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { WorldSnapshot } from "@office-sim/shared";
+import type { ServerMeta, WorldSnapshot } from "@office-sim/shared";
 
 export type StreamState = {
   conversationId: string;
@@ -12,9 +12,11 @@ export type StreamState = {
 type OfficeUiState = {
   snapshot: WorldSnapshot | null;
   stream: StreamState | null;
+  serverMeta: ServerMeta | null;
   showKeyModal: boolean;
   setSnapshot: (s: WorldSnapshot) => void;
   setStream: (s: StreamState | null) => void;
+  setServerMeta: (m: ServerMeta | null) => void;
   appendStreamToken: (token: string) => void;
   addToolNote: (note: string) => void;
   setShowKeyModal: (v: boolean) => void;
@@ -23,9 +25,11 @@ type OfficeUiState = {
 export const useOfficeStore = create<OfficeUiState>((set) => ({
   snapshot: null,
   stream: null,
+  serverMeta: null,
   showKeyModal: false,
   setSnapshot: (snapshot) => set({ snapshot }),
   setStream: (stream) => set({ stream }),
+  setServerMeta: (serverMeta) => set({ serverMeta }),
   appendStreamToken: (token) =>
     set((s) =>
       s.stream ? { stream: { ...s.stream, text: s.stream.text + token } } : {},
@@ -38,3 +42,4 @@ export const useOfficeStore = create<OfficeUiState>((set) => ({
     ),
   setShowKeyModal: (showKeyModal) => set({ showKeyModal }),
 }));
+

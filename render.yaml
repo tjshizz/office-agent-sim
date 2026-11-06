@@ -5,7 +5,11 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: PORT
         value: "8080"
+      - key: OFFICE_DATA_DIR
+        value: /data
+      - key: XAI_API_KEY
+        sync: false

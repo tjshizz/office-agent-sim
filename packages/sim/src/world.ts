@@ -199,15 +199,8 @@ export class World {
               Math.abs(agent.tile.x - other.tile.x) + Math.abs(agent.tile.y - other.tile.y);
             if (d <= 2) {
               const conv = this.startPairConversation(agent, other);
-              if (this.ambientBudgetClosed) this.playBarkExchange(conv, agent, other);
-              else {
-                this.events.onAmbientNeeded?.({
-                  kind: "pair",
-                  conversationId: conv.id,
-                  participantIds: [agent.soul.id, other.soul.id],
-                  generation: conv.generation,
-                });
-              }
+              // Ambient chatter is always local (no API tokens)
+              this.playBarkExchange(conv, agent, other);
               return;
             }
           }
@@ -251,15 +244,7 @@ export class World {
           const other = this.agents.find((a) => a.soul.id === next.targetAgentId);
           if (other && other.status !== "talking") {
             const conv = this.startPairConversation(agent, other);
-            if (this.ambientBudgetClosed) this.playBarkExchange(conv, agent, other);
-            else {
-              this.events.onAmbientNeeded?.({
-                kind: "pair",
-                conversationId: conv.id,
-                participantIds: [agent.soul.id, other.soul.id],
-                generation: conv.generation,
-              });
-            }
+            this.playBarkExchange(conv, agent, other);
           } else {
             applyIntention(agent, pickNextIntention(agent, this.agents, false), this.agents);
           }
@@ -315,18 +300,7 @@ export class World {
 
     const [a, b] = pair;
     const conv = this.startPairConversation(a, b);
-
-    if (this.ambientBudgetClosed) {
-      this.playBarkExchange(conv, a, b);
-      return;
-    }
-
-    this.events.onAmbientNeeded?.({
-      kind: "pair",
-      conversationId: conv.id,
-      participantIds: [a.soul.id, b.soul.id],
-      generation: conv.generation,
-    });
+    this.playBarkExchange(conv, a, b);
   }
 
   private maybeMeeting(): void {
@@ -365,28 +339,19 @@ export class World {
       agent.path = [];
     }
 
-    if (this.ambientBudgetClosed) {
-      conv.lines = ids.slice(0, 4).map((id, i) => ({
-        speakerId: id,
-        text:
-          i === 0
-            ? "Standup: blockers?"
-            : i === 1
-              ? "None on my side."
-              : i === 2
-                ? "Need coffee, then designs."
-                : "I'll close the open loops.",
-      }));
-      this.lineAccum = LINE_INTERVAL_MS;
-      return;
-    }
-
-    this.events.onAmbientNeeded?.({
-      kind: "meeting",
-      conversationId: conv.id,
-      participantIds: ids,
-      generation: conv.generation,
-    });
+    // Meetings are local too — tokens only when you join a live chat
+    conv.lines = ids.slice(0, 4).map((id, i) => ({
+      speakerId: id,
+      text:
+        i === 0
+          ? "Standup: blockers?"
+          : i === 1
+            ? "None on my side."
+            : i === 2
+              ? "Need coffee, then designs."
+              : "I'll close the open loops.",
+    }));
+    this.lineAccum = LINE_INTERVAL_MS;
   }
 
   startPairConversation(a: AgentState, b: AgentState): Conversation {

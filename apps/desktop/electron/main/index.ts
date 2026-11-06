@@ -75,10 +75,8 @@ async function bootWorld(): Promise<void> {
       publish();
       scheduleSave();
     },
-    onAmbientNeeded: (req) => {
-      mind.enqueueAmbient(req);
-    },
   });
+
 
   mind = new MindQueue(
     world,

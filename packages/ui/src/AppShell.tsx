@@ -15,6 +15,7 @@ type Props = {
 export function AppShell({ bridge, gameHostId }: Props) {
   const snapshot = useOfficeStore((s) => s.snapshot);
   const stream = useOfficeStore((s) => s.stream);
+  const serverMeta = useOfficeStore((s) => s.serverMeta);
   const showKeyModal = useOfficeStore((s) => s.showKeyModal);
   const setShowKeyModal = useOfficeStore((s) => s.setShowKeyModal);
 
@@ -24,6 +25,7 @@ export function AppShell({ bridge, gameHostId }: Props) {
       {snapshot ? (
         <Hud
           snapshot={snapshot}
+          serverMeta={serverMeta}
           onPauseToggle={() =>
             bridge.sendCommand({ type: snapshot.paused ? "resume" : "pause" })
           }

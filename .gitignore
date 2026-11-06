@@ -10,3 +10,8 @@ userData
 *.sqlite
 .vite
 release
+.office-data
+apps/web/server-bundle.mjs
+apps/desktop/.env
+*.tsbuildinfo
+

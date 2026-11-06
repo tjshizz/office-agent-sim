@@ -1,16 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import type { HostPayload } from "@office-sim/shared";
 import { createGame } from "@office-sim/game";
 import { AppShell, useOfficeStore } from "@office-sim/ui";
 import "../../../packages/ui/src/styles.css";
-import { createOfficeBridge, type OfficeApi } from "./runtime/bridge";
+import type { OfficeApi } from "./runtime/bridge";
+import { createRemoteOfficeBridge, probeServer } from "./runtime/remoteBridge";
 
 const GAME_HOST = "phaser-root";
 
-function Root({ office }: { office: OfficeApi }) {
+function Root({
+  office,
+  onServerMeta,
+}: {
+  office: OfficeApi;
+  onServerMeta?: (meta: HostPayload["server"]) => void;
+}) {
   const gameRef = useRef<ReturnType<typeof createGame> | null>(null);
   const setSnapshot = useOfficeStore((s) => s.setSnapshot);
   const setStream = useOfficeStore((s) => s.setStream);
+  const setServerMeta = useOfficeStore((s) => s.setServerMeta);
   const appendStreamToken = useOfficeStore((s) => s.appendStreamToken);
   const addToolNote = useOfficeStore((s) => s.addToolNote);
 
@@ -23,7 +32,6 @@ function Root({ office }: { office: OfficeApi }) {
         office.sendCommand({ type: "join", agentId });
       },
     });
-
     gameRef.current = created;
 
     const offSnap = office.onSnapshot((snap) => {
@@ -57,6 +65,14 @@ function Root({ office }: { office: OfficeApi }) {
       }
     });
 
+    const remote = office as OfficeApi & {
+      onServerMeta?: (cb: (meta: HostPayload["server"]) => void) => () => void;
+    };
+    const offMeta = remote.onServerMeta?.((meta) => {
+      setServerMeta(meta);
+      onServerMeta?.(meta);
+    });
+
     void office.getSnapshot().then((snap) => {
       setSnapshot(snap);
       setTimeout(() => created.scene.applySnapshot(snap), 100);
@@ -65,10 +81,19 @@ function Root({ office }: { office: OfficeApi }) {
     return () => {
       offSnap();
       offStream();
+      offMeta?.();
       created.game.destroy(true);
       gameRef.current = null;
     };
-  }, [addToolNote, appendStreamToken, office, setSnapshot, setStream]);
+  }, [
+    addToolNote,
+    appendStreamToken,
+    office,
+    onServerMeta,
+    setServerMeta,
+    setSnapshot,
+    setStream,
+  ]);
 
   return (
     <AppShell
@@ -86,16 +111,23 @@ function Boot() {
 
   useEffect(() => {
     let cancelled = false;
-    void createOfficeBridge()
-      .then((api) => {
-        if (cancelled) return;
-        window.office = api;
-        setOffice(api);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : String(err));
-      });
+    void (async () => {
+      const origin = window.location.origin;
+      const ok = await probeServer(origin);
+      if (cancelled) return;
+      if (!ok) {
+        setError(
+          "Office server is not reachable. Deploy/start the always-on host so agents keep working while you are away.",
+        );
+        return;
+      }
+      const api = createRemoteOfficeBridge(origin);
+      window.office = api;
+      setOffice(api);
+    })().catch((err: unknown) => {
+      if (cancelled) return;
+      setError(err instanceof Error ? err.message : String(err));
+    });
     return () => {
       cancelled = true;
     };
@@ -104,7 +136,7 @@ function Boot() {
   if (error) {
     return (
       <div style={{ padding: 24, fontFamily: "monospace" }}>
-        Failed to start office: {error}
+        Failed to connect: {error}
       </div>
     );
   }
@@ -112,7 +144,7 @@ function Boot() {
   if (!office) {
     return (
       <div style={{ padding: 24, fontFamily: "monospace", color: "#8b97ab" }}>
-        Booting office…
+        Connecting to office server…
       </div>
     );
   }

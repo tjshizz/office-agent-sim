@@ -1,15 +1,16 @@
 # Office Agent Sim
 
-8-bit top-down office sim. Every employee is an AI agent you can join and chat with like Grok Bot.
+8-bit top-down office. Employees are AI agents. The **Render server** keeps the office alive while you are away; desktop/phone are viewers.
 
-## Stack
+## How it fits together
 
-- Phaser 3 + React (shared UI/game/sim packages)
-- Desktop: Electron + sql.js (`office.sqlite` in userData) + `safeStorage` for the API key
-- Web: Vite + IndexedDB persistence + `localStorage` for the API key (dev proxy for xAI)
-- Local simulation loop (movement, tasks, bark fallback)
-- xAI Grok for ambient dialogue and live joined chats
+| Piece | Role |
+| --- | --- |
+| Render web service | Always-on office host: ticks the sim, away-work scripts, live Grok chat, SSE sync |
+| Browser at your Render URL | Thin client connected to that host |
+| Desktop Electron | Same client; set `VITE_OFFICE_SERVER_URL` to your Render URL |
 
+Ambient walking/chatter is free (local lines on the server). **Grok tokens only** when you join a chat (needs `XAI_API_KEY` on Render).
 
 ## Setup
 
@@ -20,47 +21,45 @@ pnpm --filter @office-sim/sim build
 pnpm --filter @office-sim/agents build
 ```
 
-### Desktop (Electron)
-
-```bash
-pnpm dev
-```
-
-### Web (local dev)
-
-```bash
-pnpm dev:web
-```
-
-Then open the Vite URL (default `http://localhost:5173`). Grok calls go through a Vite `/xai` proxy so the browser avoids CORS.
-
-### Web (production server)
-
-Serves the built app and proxies `/xai` → `https://api.x.ai` (needed for Grok outside Vite):
+### Always-on server (local)
 
 ```bash
 pnpm build:web
 pnpm start:web
 ```
 
-Opens on `http://localhost:8080` (or `$PORT`).
+Opens on `http://localhost:8080`. Agents keep working even with zero browser tabs.
 
-To host it publicly on **Render** (free tier):
+### Deploy on Render
 
 1. Push this repo to GitHub.
-2. In [Render](https://dashboard.render.com) → **New** → **Blueprint** → select the repo (uses root `render.yaml`).
-3. Deploy. You’ll get a URL like `https://office-agent-sim.onrender.com`.
+2. [Render](https://dashboard.render.com) → **Blueprint** → select the repo (`render.yaml`).
+3. Set secret env var **`XAI_API_KEY`** on the service.
+4. Deploy. Health check: `/api/health`.
 
-Or **New Web Service** → Docker → root `Dockerfile`. Set health check path to `/`.
+Free tier may sleep after idle; first request can be slow. For true 24/7, use a paid always-on plan.
 
-Optional: set your xAI API key in the in-app **API key** dialog. Without a key, the office still runs offline using bark lines.
+### Desktop connected to Render
+
+Create `apps/desktop/.env`:
+
+```bash
+VITE_OFFICE_SERVER_URL=https://YOUR-SERVICE.onrender.com
+```
+
+Then:
+
+```bash
+pnpm dev
+```
+
+Without that env var, desktop runs a local office (stops when you quit).
 
 ## Controls
 
-- Click an employee whenever you want to talk to them
-- Pause freezes the world clock; live chat still works
-- Token meters show ambient vs chat budget
-
+- Click an employee to talk
+- HUD shows **Server · uptime · viewers** when connected
+- **While you were away** shows the latest background task an agent finished
 
 ## Cast
 

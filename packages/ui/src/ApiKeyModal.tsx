@@ -17,8 +17,8 @@ export function ApiKeyModal({ open, hasKey, onSave, onClear, onClose }: Props) {
       <div className="modal">
         <h2>xAI API key</h2>
         <p>
-          Ambient chatter and live join use Grok via api.x.ai. Without a key the office still runs
-          on bark lines.
+          Walking, idle chatter, and meetings are free. Your xAI key is only used when you click an
+          employee and chat with them live.
         </p>
         <input
           type="password"
